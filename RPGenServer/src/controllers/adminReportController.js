@@ -3,6 +3,15 @@ const MonthlyReport = require("../models/MonthlyReport");
 const { isValidObjectId } = require("../services/idService");
 const { getOrCreateReport } = require("../services/reportService");
 
+const POSITION_ORDER = [
+  "Expert comunicare GT si angajatori",
+  "Expert selectie si mentinere GT",
+  "Expert probleme mediu",
+  "Expert parteneriate",
+  "Cadru didactic supervizor",
+  "Tutor practica",
+];
+
 function parseIntStrict(v) {
   const n = Number(v);
   return Number.isInteger(n) ? n : null;
@@ -24,10 +33,28 @@ async function listMonthReports(req, res, next) {
     const monthKey = `${year}-${String(month).padStart(2, "0")}`;
 
     // NEW: only experts active in this month
-    const experts = await Expert.find({ activeMonths: monthKey })
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    const experts = await Expert.aggregate([
+  { $match: { activeMonths: monthKey } },
+
+  // compute rank based on POSITION_ORDER; unknown positions go last
+  {
+    $addFields: {
+      positionRank: {
+        $let: {
+          vars: { idx: { $indexOfArray: [POSITION_ORDER, "$position"] } },
+          in: { $cond: [{ $eq: ["$$idx", -1] }, 999, "$$idx"] },
+        },
+      },
+    },
+  },
+
+  // sort by rank then name then createdAt
+  { $sort: { positionRank: 1, name: 1, createdAt: 1 } },
+
+  // remove the helper field if you want
+  { $project: { positionRank: 0 } },
+])
+  .collation({ locale: "ro", strength: 1 });
 
     const expertIds = experts.map((e) => e._id);
 

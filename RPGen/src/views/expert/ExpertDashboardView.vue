@@ -332,7 +332,7 @@ onMounted(loadAll);
                 <label class="text-sm text-gray-600">Activity</label>
                 <textarea
                   v-model="r.activity"
-                  class="w-full rounded-xl border px-3 py-2 min-h-30"
+                  class="w-full rounded-xl border px-3 py-2 min-h-40"
                   :disabled="!state.pmVerified"
                 />
               </div>

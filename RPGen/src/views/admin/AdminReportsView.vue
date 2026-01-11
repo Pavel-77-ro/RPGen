@@ -42,7 +42,6 @@ function donutKey(label) {
   if (label === 'Draft') return 'draft'
   return 'not_created'
 }
-
 const ACTIVITY_OPTIONS = [
   {
     code: 'A1.1',
@@ -407,7 +406,7 @@ onMounted(load)
                   :disabled="editorBusy"
                   @click="verify(it.expert.id)"
                 >
-                  Completat <i class="pl-1 pi pi-check"></i>
+                  Permite Acces
                 </button>
 
                 <button
