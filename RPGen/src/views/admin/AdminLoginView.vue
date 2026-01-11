@@ -30,15 +30,18 @@ async function onLogin() {
       <h1 class="text-xl font-semibold">Admin Login</h1>
       <p class="text-sm text-gray-500 mt-1">4-digit PIN</p>
 
-      <div class="mt-4 space-y-3">
+      <form class="mt-4 space-y-3" @submit.prevent="onLogin">
         <input
           v-model="pin"
           class="w-full rounded-xl border px-3 py-2"
+          type="password"
           inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="4"
         />
 
         <button
-          @click="onLogin"
+          type="submit"
           :disabled="loading || pin.trim().length < 4"
           class="w-full rounded-xl bg-black text-white py-2 disabled:opacity-50"
         >
@@ -50,7 +53,7 @@ async function onLogin() {
         <div class="pt-2 text-sm">
           <a class="text-blue-600 underline" href="/login">Expert login</a>
         </div>
-      </div>
+      </form>
     </div>
   </div>
 </template>
