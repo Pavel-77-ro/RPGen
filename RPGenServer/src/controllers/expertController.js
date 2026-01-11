@@ -2,6 +2,15 @@ const Expert = require("../models/Expert");
 const { isValidObjectId } = require("../services/idService");
 const MonthlyReport = require("../models/MonthlyReport");
 
+const POSITION_ORDER = [
+  "Expert comunicare GT si angajatori",
+  "Expert selectie si mentinere GT",
+  "Expert probleme mediu",
+  "Expert parteneriate",
+  "Cadru didactic supervizor",
+  "Tutor practica",
+];
+
 function cleanStr(v) {
   return typeof v === "string" ? v.trim() : "";
 }
@@ -61,10 +70,27 @@ async function createExpert(req, res, next) {
 
 async function listExperts(req, res, next) {
   try {
-    const experts = await Expert.find({})
-      .sort({ createdAt: -1 })
-      .lean()
-      .exec();
+    const experts = await Expert.aggregate([
+      { $match: {} },
+
+      // compute rank by POSITION_ORDER (unknown positions go last)
+      {
+        $addFields: {
+          positionRank: {
+            $let: {
+              vars: { idx: { $indexOfArray: [POSITION_ORDER, "$position"] } },
+              in: { $cond: [{ $eq: ["$$idx", -1] }, 999, "$$idx"] },
+            },
+          },
+        },
+      },
+
+      // sort by role hierarchy then name then createdAt (stable)
+      { $sort: { positionRank: 1, name: 1, createdAt: 1 } },
+
+      // remove helper
+      { $project: { positionRank: 0 } },
+    ]).collation({ locale: "ro", strength: 1 });
 
     return res.json({
       ok: true,
@@ -75,7 +101,7 @@ async function listExperts(req, res, next) {
         position: x.position,
         contract: x.contract,
         responsibility: x.responsibility,
-        activeMonths: x.activeMonths || [], // ✅ NEW
+        activeMonths: x.activeMonths || [],
         createdAt: x.createdAt,
       })),
     });
@@ -83,6 +109,7 @@ async function listExperts(req, res, next) {
     next(e);
   }
 }
+
 
 function isValidMonthKey(s) {
   // expects "YYYY-MM"
