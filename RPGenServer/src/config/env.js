@@ -8,7 +8,7 @@ function requireEnv(name) {
 }
 
 const env = {
-  port: process.env.PORT || 5000,
+  port: Number(process.env.PORT) || 5000,
   mongodbUri: requireEnv("MONGODB_URI"),
   jwtSecret: requireEnv("JWT_SECRET"),
   adminPin: requireEnv("ADMIN_PIN"),
