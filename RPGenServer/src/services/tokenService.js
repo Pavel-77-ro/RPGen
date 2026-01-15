@@ -5,7 +5,7 @@ function signAdminToken() {
   return jwt.sign(
     { role: "admin" },
     env.jwtSecret,
-    { expiresIn: "1d" } // in-house convenience
+    { expiresIn: "7d" }
   );
 }
 
@@ -13,7 +13,7 @@ function signExpertToken(expertId) {
   return jwt.sign(
     { role: "expert", expertId: String(expertId) },
     env.jwtSecret,
-    { expiresIn: "8h" }
+    { expiresIn: "1d" }
   );
 }
 

@@ -33,6 +33,10 @@ router.beforeEach((to) => {
   const admin = useAdminAuthStore();
   const expert = useExpertAuthStore();
 
+  admin.applyToken();
+expert.applyToken();
+
+
   // Expert guards
   if (to.meta.requiresExpert && !expert.isAuthed) return { name: "expert-login" };
   if (to.meta.guestExpert && expert.isAuthed) return { name: "expert-dashboard" };
