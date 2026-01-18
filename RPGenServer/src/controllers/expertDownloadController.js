@@ -15,6 +15,11 @@ function safeFilename(s) {
     .replace(/\s+/g, "_");
 }
 
+function capitalizeFirst(s) {
+  const str = String(s || "");
+  return str ? str[0].toUpperCase() + str.slice(1) : str;
+}
+
 // GET /reports/:year/:month/download
 async function downloadExpertReport(req, res, next) {
   try {
@@ -59,7 +64,11 @@ async function downloadExpertReport(req, res, next) {
 
     const buf = renderDocx(getDefaultTemplatePath(), data);
 
-    const filename = `${safeFilename(expert.name.split(" ")[0] || expert.uid || "expert")}_${safeFilename(expert.position||"")}_${safeFilename(monthLabel)}.docx`;
+    const uidFirst = expert.uid?.split(".")[0] || expert.uid || "expert";
+    const uidFirstCap = capitalizeFirst(uidFirst);
+
+    const filename =
+      `${safeFilename(uidFirstCap)}_${safeFilename(expert.position || "")}_${safeFilename(monthLabel)}.docx`;
 
     res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.wordprocessingml.document");
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);

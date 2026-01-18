@@ -18,10 +18,9 @@ function renderDocx(templatePath, data) {
     delimiters: { start: "{{", end: "}}" },
   });
 
-  doc.setData(data);
-
   try {
-    doc.render();
+    // NEW API (avoids deprecated setData)
+    doc.render(data);
   } catch (e) {
     console.error("DOCX render error:", e);
     throw new Error("DOCX render failed (check template placeholders/loop markers)");

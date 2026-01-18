@@ -249,29 +249,54 @@ async function saveRows(expertId) {
   try {
     const cleaned = normalizeRows(editorRows.value)
     const payloadRows = cleaned.map((r) => ({ title: r.title, hours: r.hours }))
-    const report = await adminUpsertPmRows(expertId, year.value, month.value, payloadRows)
+
+    // IMPORTANT: your API seems to return { ok, report }
+    const resp = await adminUpsertPmRows(expertId, year.value, month.value, payloadRows)
+    const report = resp.report ?? resp // support either shape
 
     const it = findItemByExpertId(expertId)
     if (it) {
-      it.report = it.report || {}
-      it.report.id = report.id
-      it.report.year = report.year
-      it.report.month = report.month
-      it.report.pmVerified = report.pmVerified
-      it.report.verifiedAt = report.verifiedAt
-      it.report.updatedAt = report.updatedAt
-      it.report.rows = report.rows
-      it.report.rowsCount = report.rows?.length || 0
+      // update only this expert's report
+      it.report = {
+        ...(it.report || {}),
+        id: report.id,
+        year: report.year,
+        month: report.month,
+        pmVerified: report.pmVerified,
+        verifiedAt: report.verifiedAt,
+        updatedAt: report.updatedAt,
+        rows: report.rows || [],
+        rowsCount: (report.rows || []).length,
+        // recompute expertStarted if you want it accurate immediately:
+        expertStarted:
+          !!(report.description?.trim?.()?.length) ||
+          (Array.isArray(report.rows) &&
+            report.rows.some(
+              (x) => (x.activity || '').trim() || (x.results || '').trim()
+            )),
+      }
     }
 
-    await load()
-    openEditorFor.value = expertId
+    // keep editor open; optionally resync editorRows from saved data
+    // (useful if backend normalizes anything)
+    const existing = it?.report?.rows || []
+    if (existing.length > 0) {
+      editorRows.value = existing.map((r) => {
+        const full = (r.title || '').trim()
+        const match =
+          ACTIVITY_OPTIONS.find((o) => o.full === full || full.startsWith(o.code + ' ')) ||
+          ACTIVITY_OPTIONS.find((o) => o.code === full)
+        return { code: match?.code || '', hours: r.hours ?? 0 }
+      })
+    }
+
   } catch (e) {
     editorErr.value = e?.response?.data?.error || 'Failed to save rows'
   } finally {
     editorBusy.value = false
   }
 }
+
 
 async function verify(expertId) {
   editorErr.value = ''
@@ -481,13 +506,22 @@ onMounted(load)
                     +{{ (it.report.rows || []).length - 3 }} more
                   </span>
 
-                  <span
-                    class="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-gray-700 ml-auto"
-                    :title="'Total ore (sumă): ' + (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) + 'h'">
-                    Total ore:
-                    {{
-                      (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0)
-                    }}h
+                  <!-- Total -->
+                  <span class="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 ml-auto" :class="((it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) >= 85)
+                      ? 'bg-red-50 text-red-700 border-red-200'
+                      : 'bg-gray-50 text-gray-700'
+                    " :title="'Total ore (sumă): ' + (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) + 'h'">
+                    <span>Total ore:</span>
+
+                    <span class="font-medium">
+                      {{
+                        (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0)
+                      }}h
+                    </span>
+
+                    <!-- warning icon when >= 85 -->
+                    <i v-if="(it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) >= 85"
+                      class="pi pi-exclamation-triangle text-sm" aria-hidden="true"></i>
                   </span>
                 </template>
 
@@ -500,6 +534,7 @@ onMounted(load)
                 </template>
               </div>
             </div>
+
 
 
           </div>
