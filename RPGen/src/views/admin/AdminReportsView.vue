@@ -194,6 +194,7 @@ function openEditor(it) {
   } else {
     editorRows.value = [{ code: '', hours: 0 }]
   }
+
 }
 
 function addRow() {
@@ -313,8 +314,7 @@ onMounted(load)
       <div class="flex gap-2">
         <RouterLink
           class="rounded-xl font-semibold border px-3 py-2 text-black hover:text-white hover:bg-black flex items-center transition"
-          to="/admin/experts"
-        >
+          to="/admin/experts">
           Experts <i class="pl-2 pi pi-users"></i>
         </RouterLink>
       </div>
@@ -323,11 +323,7 @@ onMounted(load)
     <div class="mt-6 rounded-2xl border p-5 flex flex-col md:flex-row md:items-end gap-3">
       <div>
         <label class="text-sm text-gray-600 pr-1">Year</label>
-        <input
-          v-model.number="year"
-          type="number"
-          class="w-full md:w-40 rounded-xl border px-3 py-2"
-        />
+        <input v-model.number="year" type="number" class="w-full md:w-40 rounded-xl border px-3 py-2" />
       </div>
 
       <div>
@@ -343,9 +339,7 @@ onMounted(load)
 
       <button
         class="rounded-xl bg-black text-white px-4 py-2 disabled:opacity-50 cursor-pointer hover:scale-105 transition"
-        :disabled="loading"
-        @click="load"
-      >
+        :disabled="loading" @click="load">
         {{ loading ? 'Loading...' : 'Load' }}
       </button>
 
@@ -354,10 +348,7 @@ onMounted(load)
       </div>
     </div>
 
-    <div
-      v-if="err"
-      class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-    >
+    <div v-if="err" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
       {{ err }}
     </div>
 
@@ -385,62 +376,45 @@ onMounted(load)
                   {{ it.expert.name }}
                   <span class="text-sm text-gray-500">({{ it.expert.uid }})</span>
                 </div>
-                <div
-                  class="mt-2 inline-flex items-center rounded-full px-2 py-1 text-xs"
-                  :class="badge(it.report).cls"
-                >
+                <div class="mt-2 inline-flex items-center rounded-full px-2 py-1 text-xs" :class="badge(it.report).cls">
                   {{ badge(it.report).text }}
                 </div>
               </div>
 
               <div class="flex gap-2 flex-wrap justify-end">
-                <button
-                  class="rounded-xl border px-3 py-2 text-sm cursor-pointer hover:scale-105 transition"
-                  @click="openEditor(it)"
-                >
+                <button class="rounded-xl border px-3 py-2 text-sm cursor-pointer hover:scale-105 transition"
+                  @click="openEditor(it)">
                   {{ openEditorFor === it.expert.id ? 'Close' : 'Edit' }}
                 </button>
 
                 <button
                   class="rounded-xl border px-3 py-2 text-sm disabled:opacity-50 bg-green-200 cursor-pointer hover:scale-105 transition"
-                  :disabled="editorBusy"
-                  @click="verify(it.expert.id)"
-                >
+                  :disabled="editorBusy" @click="verify(it.expert.id)">
                   Permite Acces
                 </button>
 
                 <button
                   class="rounded-xl border px-3 py-2 text-sm bg-blue-200 cursor-pointer hover:scale-105 transition"
-                  @click="download(it.expert.id)"
-                >
+                  @click="download(it.expert.id)">
                   Download <i class="pl-2 pi pi-download"></i>
                 </button>
               </div>
             </div>
 
             <!-- Inline editor -->
-            <div
-              v-if="openEditorFor === it.expert.id"
-              class="mt-4 rounded-2xl border p-4 bg-gray-50"
-            >
+            <div v-if="openEditorFor === it.expert.id" class="mt-4 rounded-2xl border p-4 bg-gray-50">
               <div class="flex items-center justify-between">
                 <div class="font-semibold">PM rows (title + hours)</div>
                 <div class="text-xs text-gray-500">These define the table rows in the report.</div>
               </div>
 
-              <div
-                v-if="editorErr"
-                class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
-              >
+              <div v-if="editorErr" class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
                 {{ editorErr }}
               </div>
 
               <div class="mt-4 space-y-2">
-                <div
-                  v-for="(r, idx) in editorRows"
-                  :key="idx"
-                  class="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-2 items-end"
-                >
+                <div v-for="(r, idx) in editorRows" :key="idx"
+                  class="grid grid-cols-1 md:grid-cols-[1fr_140px_auto] gap-2 items-end">
                   <div>
                     <label class="text-xs text-gray-600">Title</label>
                     <select v-model="r.code" class="w-full rounded-xl border px-3 py-2">
@@ -453,46 +427,30 @@ onMounted(load)
 
                   <div>
                     <label class="text-xs text-gray-600">Hours</label>
-                    <input
-                      v-model.number="r.hours"
-                      type="number"
-                      min="0"
-                      class="w-full rounded-xl border px-3 py-2"
-                    />
+                    <input v-model.number="r.hours" type="number" min="0" class="w-full rounded-xl border px-3 py-2" />
                   </div>
 
-                  <button
-                    class="rounded-xl border px-3 py-2 text-sm"
-                    @click="removeRow(idx)"
-                    :disabled="editorBusy"
-                  >
+                  <button class="rounded-xl border px-3 py-2 text-sm" @click="removeRow(idx)" :disabled="editorBusy">
                     Remove
                   </button>
                 </div>
               </div>
 
               <div class="mt-4 flex gap-2 flex-wrap">
-                <button
-                  class="rounded-xl border px-3 py-2 text-sm"
-                  @click="addRow"
-                  :disabled="editorBusy"
-                >
+                <button class="rounded-xl border px-3 py-2 text-sm cursor-pointer hover:scale-105 transition"
+                  @click="addRow" :disabled="editorBusy">
                   + Add row
                 </button>
 
                 <button
-                  class="rounded-xl bg-black text-white px-4 py-2 text-sm disabled:opacity-50"
-                  :disabled="editorBusy"
-                  @click="saveRows(it.expert.id)"
-                >
+                  class="rounded-xl bg-black text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition"
+                  :disabled="editorBusy" @click="saveRows(it.expert.id)">
                   {{ editorBusy ? 'Saving...' : 'Save' }}
                 </button>
 
                 <button
-                  class="rounded-xl border px-4 py-2 text-sm"
-                  :disabled="editorBusy"
-                  @click="openEditor(it)"
-                >
+                  class="rounded-xl text-white px-4 py-2 text-sm cursor-pointer hover:scale-105 transition bg-red-500"
+                  :disabled="editorBusy" @click="openEditor(it)">
                   Close
                 </button>
               </div>
@@ -503,10 +461,47 @@ onMounted(load)
               <div><span class="text-gray-500">Contract:</span> {{ it.expert.contract }}</div>
             </div>
 
-            <div v-if="it.report" class="mt-3 text-xs text-gray-500">
-              Rows: {{ it.report.rowsCount }} • Updated:
-              {{ new Date(it.report.updatedAt).toLocaleString() }}
+            <div v-if="it.report" class="mt-3 text-sm text-gray-500">
+              <div class="flex flex-wrap gap-2 items-center">
+                <span class="text-gray-800">Activități:</span>
+
+                <template v-if="(it.report.rows || []).length">
+                  <template v-for="(r, i) in (it.report.rows || []).slice(0, 3)" :key="i">
+                    <span class="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-0.5 text-gray-700"
+                      :title="r.title">
+                      <span class="font-medium">{{ (r.title || '').split(' ')[0] }}</span>
+                      <span class="text-gray-400">—</span>
+                      <span>{{ Number(r.hours) || 0 }}h</span>
+                    </span>
+                  </template>
+
+                  <span v-if="(it.report.rows || []).length > 3"
+                    class="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-gray-600"
+                    :title="(it.report.rows || []).slice(3).map(x => x.title).join('\n')">
+                    +{{ (it.report.rows || []).length - 3 }} more
+                  </span>
+
+                  <span
+                    class="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-gray-700 ml-auto"
+                    :title="'Total ore (sumă): ' + (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) + 'h'">
+                    Total ore:
+                    {{
+                      (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0)
+                    }}h
+                  </span>
+                </template>
+
+                <template v-else>
+                  <span class="text-gray-400">—</span>
+                  <span
+                    class="inline-flex items-center rounded-full border bg-gray-50 px-2 py-0.5 text-gray-700 ml-auto">
+                    Total: 0h
+                  </span>
+                </template>
+              </div>
             </div>
+
+
           </div>
         </div>
       </div>
@@ -540,7 +535,7 @@ onMounted(load)
 
           <div class="rounded-2xl border p-4">
             <div class="flex items-center justify-between">
-              <div class="text-sm font-medium">Month progress</div>
+              <div class="text-sm font-medium">Progres lunar</div>
               <div class="text-sm text-gray-600">{{ stats.completedPct }}%</div>
             </div>
             <div class="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
@@ -556,26 +551,16 @@ onMounted(load)
 
             <div class="flex items-center gap-4">
               <svg viewBox="0 0 36 36" class="w-20 h-20">
-                <path
-                  d="M18 2.0845
+                <path d="M18 2.0845
                      a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-opacity="0.15"
-                  stroke-width="3"
-                />
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-opacity="0.15"
+                  stroke-width="3" />
                 <template v-for="(seg, idx) in donut" :key="idx">
-                  <path
-                    d="M18 2.0845
+                  <path d="M18 2.0845
                     a 15.9155 15.9155 0 0 1 0 31.831
-                     a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    :stroke="DONUT_STROKES[donutKey(seg.label)]"
-                    stroke-width="3"
-                    :stroke-dasharray="seg.size + ' ' + (100 - seg.size)"
-                    :stroke-dashoffset="-seg.offset"
-                  />
+                     a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" :stroke="DONUT_STROKES[donutKey(seg.label)]"
+                    stroke-width="3" :stroke-dasharray="seg.size + ' ' + (100 - seg.size)"
+                    :stroke-dashoffset="-seg.offset" />
                 </template>
               </svg>
 
@@ -621,11 +606,7 @@ onMounted(load)
               No updates yet.
             </div>
             <div v-else class="mt-2 space-y-2 text-sm">
-              <div
-                v-for="it in recentUpdates"
-                :key="it.expert.id"
-                class="flex items-center justify-between"
-              >
+              <div v-for="it in recentUpdates" :key="it.expert.id" class="flex items-center justify-between">
                 <div class="truncate">
                   <span class="font-medium">{{ it.expert.name }}</span>
                 </div>

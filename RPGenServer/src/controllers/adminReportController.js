@@ -100,6 +100,7 @@ async function listMonthReports(req, res, next) {
               pmVerified,
               verifiedAt: r.verifiedAt,
               rowsCount: r.rows?.length || 0,
+              rows: r.rows || [],
               expertStarted,
               updatedAt: r.updatedAt,
             }
