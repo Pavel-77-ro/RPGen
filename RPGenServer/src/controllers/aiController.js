@@ -16,11 +16,12 @@ Generează o descriere ({{description}}) pentru luna: ${monthLabel}.
 Reguli:
 - 6–10 propoziții, 1–2 paragrafe.
 - Foloseste persoana 1, raportul este scris de expertul in cauza (pentru el).
-- Stil formal, clar, fără liste cu bullet points.
+- Chiar daca nu pare destula informatie, incearca sa il faci cat mai bine.
+- Stil formal, clar, formulare cursiva, fără liste cu bullet points.
 - Nu inventa activități; folosește doar informațiile primite.
 - Dacă unele câmpuri sunt goale, omite acea parte.
 - Nu include ghilimele, titluri sau semnături. Doar textul descrierii.
-- minim 100 de cuvinte
+- minim 120 de cuvinte
 - Numarul de ore nu va fi mentionat si nici numele rezultatelor
 
 Context expert:

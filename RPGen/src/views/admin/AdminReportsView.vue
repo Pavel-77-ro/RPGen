@@ -574,7 +574,7 @@ onMounted(load)
               <div class="text-sm text-gray-600">{{ stats.completedPct }}%</div>
             </div>
             <div class="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
-              <div class="h-2 bg-black" :style="{ width: stats.completedPct + '%' }"></div>
+              <div class="h-2 bg-gray-800 " :style="{ width: stats.completedPct + '%' }"></div>
             </div>
             <div class="mt-2 text-xs text-gray-500">
               Remaining: {{ stats.total - stats.completed }} experts

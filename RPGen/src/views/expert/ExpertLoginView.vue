@@ -34,7 +34,7 @@ async function onLogin() {
         <input
           v-model="uid"
           class="w-full rounded-xl border px-3 py-2"
-          placeholder="e.g. fianu.danut"
+          placeholder="e.g. nume.prenume"
           autocomplete="off"
         />
 
