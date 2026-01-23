@@ -352,18 +352,20 @@ onMounted(loadAll);
         </div>
 
         <div class="text-sm">
-          <div class="text-gray-500">Selected report</div>
-          <div class="font-semibold">{{ monthLabel || "—" }}</div>
-        </div>
-
-        <div class="text-sm">
           <span
             class="inline-flex items-center rounded-full px-2 py-1 text-xs border"
             :class="state.pmVerified ? 'bg-green-50 text-green-800' : 'bg-gray-50 text-gray-700'"
           >
-            {{ state.pmVerified ? "Available (PM Verified)" : "Not verified" }}
+            {{ state.pmVerified ? "Valabil" : "Asteptati accesul" }}
           </span>
         </div>
+
+        <div class="text-sm">
+          <div class="text-gray-500">Selected report</div>
+          <div class="font-semibold">{{ monthLabel || "—" }}</div>
+        </div>
+
+        
       </div>
 
       <div v-if="err" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
@@ -383,22 +385,21 @@ onMounted(loadAll);
         <div class="lg:col-span-8 xl:col-span-8">
           <div class="max-w-5xl mx-auto space-y-6">
             <div v-if="!selectedKey" class="rounded-2xl border px-5  bg-gray-50 text-sm text-gray-700">
-              Select a month to view/edit the report.
+              Selectati o luna pentru a completa raportul.
             </div>
 
             <div v-else-if="!state.pmVerified" class="rounded-2xl border p-5 bg-gray-50 text-sm text-gray-700">
-              This month is not verified by the PM yet. You can view it, but you cannot edit/save/download until it is
-              verified.
+              Managerul nu a completat aceasta luna momentan. Asteptati pana vi se permite editarea!
             </div>
 
             <div v-else-if="state.rows.length === 0" class="rounded-2xl border p-5 bg-gray-50 text-sm text-gray-700">
-              PM verified the month, but there are no rows. Ask PM to add titles/hours.
+              Managerul a permis accesul dar nu aveti nici o activitate delegata. Raportati greseala!
             </div>
 
             <div v-else class="rounded-2xl border overflow-hidden">
               <div class="px-5 py-4 border-b flex items-center justify-between">
-                <h2 class="font-semibold">Monthly rows</h2>
-                <div class="text-xs text-gray-500">Fill activity + results (multiline is ok)</div>
+                <h2 class="font-semibold">Monthly activities</h2>
+                <div class="text-xs text-gray-500">Introduceti activitatile+rezultatele</div>
               </div>
 
               <div class="divide-y">
@@ -424,7 +425,7 @@ onMounted(loadAll);
                       <label class="text-sm text-gray-600">Results</label>
                       <textarea
                         v-model="r.results"
-                        class="w-full rounded-xl border px-3 py-2 min-h-30"
+                        class="w-full rounded-xl border px-3 py-2 min-h-40"
                         :disabled="!state.pmVerified"
                       />
                     </div>
@@ -447,7 +448,7 @@ onMounted(loadAll);
               </div>
 
               <p class="text-sm text-gray-500 mt-1">
-                This fills the <code>{{ "{description}" }}</code> field in the template.
+                Acesta reprezinta descrierea narativa a activitatilor
               </p>
 
               <textarea
@@ -527,10 +528,10 @@ onMounted(loadAll);
 
                   <div>
                     <div class="text-sm font-medium transition-colors duration-300" :class="step2Verified ? 'text-blue-700' : 'text-gray-700'">
-                      Asteptati sa primiti accesul
+                      Acces permis de catre manager
                     </div>
                     <div class="text-xs text-gray-500 mt-1">
-                      Puteti completa doar dupa ce au fost adaugate A-urile
+                      Puteti completa doar dupa ce au fost adaugate titlurile de activitate
                     </div>
                   </div>
                 </li>
