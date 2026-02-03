@@ -42,3 +42,16 @@ export async function adminDownloadDocx(expertId, year, month) {
 
   return { blob: res.data, filename };
 }
+
+export async function adminDownloadNarrativesDocx(year, month) {
+  withAdminAuth();
+  const res = await api.get(`/admin/reports/${year}/${month}/narratives/download`, {
+    responseType: "blob",
+  });
+
+  const cd = res.headers?.["content-disposition"] || "";
+  const match = /filename="([^"]+)"/.exec(cd);
+  const filename = match?.[1] || "narratives.docx";
+
+  return { blob: res.data, filename };
+}

@@ -8,6 +8,11 @@ function getDefaultTemplatePath() {
   return path.join(process.cwd(), "templates", "template.docx");
 }
 
+function getNarrativesTemplatePath() {
+  // Uses RPGenServer/templates/narratives.docx
+  return path.join(process.cwd(), "templates", "narratives.docx");
+}
+
 function renderDocx(templatePath, data) {
   const content = fs.readFileSync(templatePath, "binary");
   const zip = new PizZip(content);
@@ -32,4 +37,4 @@ function renderDocx(templatePath, data) {
   });
 }
 
-module.exports = { getDefaultTemplatePath, renderDocx };
+module.exports = { getDefaultTemplatePath, getNarrativesTemplatePath, renderDocx };

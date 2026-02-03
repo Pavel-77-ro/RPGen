@@ -1,7 +1,7 @@
 const Expert = require("../models/Expert");
 const MonthlyReport = require("../models/MonthlyReport");
 const { isValidObjectId } = require("../services/idService");
-const { getDefaultTemplatePath, renderDocx } = require("../services/docxService");
+const { getDefaultTemplatePath, getNarrativesTemplatePath, renderDocx } = require("../services/docxService");
 const { formatRoMonthYearUpper, lastDayOfMonth, formatDateDDMMYYYY } = require("../services/dateService");
 
 function parseIntStrict(v) {
@@ -21,6 +21,14 @@ function capitalizeFirst(s) {
   return str ? str[0].toUpperCase() + str.slice(1) : str;
 }
 
+const TARGET_POSITIONS = [
+  "Expert comunicare GT si angajatori",
+  "Expert selectie si mentinere GT",
+  "Expert probleme mediu",
+  "Expert parteneriate",
+];
+
+const NO_ACTIVITY_TEXT = "Nu exista activitate in aceasta luna.";
 
 // GET /admin/reports/:expertId/:year/:month/download
 async function downloadAdminReport(req, res, next) {
@@ -81,4 +89,65 @@ async function downloadAdminReport(req, res, next) {
   }
 }
 
-module.exports = { downloadAdminReport };
+// GET /admin/reports/:year/:month/narratives/download
+async function downloadAdminNarratives(req, res, next) {
+  try {
+    const { year: yearStr, month: monthStr } = req.params;
+
+    const year = parseIntStrict(yearStr);
+    const month = parseIntStrict(monthStr);
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({ ok: false, error: "Invalid year/month" });
+    }
+
+    const reports = await MonthlyReport.find({ year, month })
+      .select("expertId description")
+      .lean()
+      .exec();
+
+    const expertIds = reports.map((r) => r.expertId);
+
+    const experts = await Expert.find({
+      _id: { $in: expertIds },
+      position: { $in: TARGET_POSITIONS },
+    })
+      .select("_id position")
+      .lean()
+      .exec();
+
+    const expertById = new Map(experts.map((e) => [String(e._id), e]));
+
+    const groups = TARGET_POSITIONS.map((position) => {
+      const narratives = [];
+      for (const r of reports) {
+        const expert = expertById.get(String(r.expertId));
+        if (!expert || expert.position !== position) continue;
+        const text = String(r.description || "").trim();
+        if (text) narratives.push(text);
+      }
+
+      return {
+        position,
+        narratives,
+        noActivityText: NO_ACTIVITY_TEXT,
+      };
+    });
+
+    const data = { groups };
+    const buf = renderDocx(getNarrativesTemplatePath(), data);
+
+    const monthLabel = formatRoMonthYearUpper(year, month);
+    const filename = `Narative_${safeFilename(monthLabel)}.docx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(buf);
+  } catch (e) {
+    next(e);
+  }
+}
+
+module.exports = { downloadAdminReport, downloadAdminNarratives };

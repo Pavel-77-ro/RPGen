@@ -5,6 +5,7 @@ import {
   adminUpsertPmRows,
   adminVerifyReport,
   adminDownloadDocx,
+  adminDownloadNarrativesDocx,
 } from '@/services/adminReportsApi'
 import { RouterLink } from 'vue-router'
 
@@ -22,6 +23,7 @@ const openEditorFor = ref('') // expertId whose editor is open
 const editorRows = ref([]) // [{ code, hours }]
 const editorBusy = ref(false)
 const editorErr = ref('')
+const narrativesBusy = ref(false)
 
 const monthName = computed(() => {
   const d = new Date(year.value, month.value - 1, 1)
@@ -325,6 +327,26 @@ async function download(expertId) {
     window.URL.revokeObjectURL(url)
   } catch (e) {
     err.value = e?.response?.data?.error || 'Download failed'
+  }
+}
+
+async function downloadNarratives() {
+  err.value = ''
+  narrativesBusy.value = true
+  try {
+    const { blob, filename } = await adminDownloadNarrativesDocx(year.value, month.value)
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    err.value = e?.response?.data?.error || 'Download failed'
+  } finally {
+    narrativesBusy.value = false
   }
 }
 
@@ -650,6 +672,19 @@ onMounted(load)
                 </div>
               </div>
             </div>
+          </div>
+
+          <div class="rounded-2xl border p-4">
+            <div class="text-sm font-medium mb-3">Exports</div>
+            <div class="text-xs text-gray-500 mb-3">
+              Grouped narratives by expert position for the selected month.
+            </div>
+            <button
+              class="rounded-xl bg-black text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition"
+              :disabled="narrativesBusy"
+              @click="downloadNarratives">
+              {{ narrativesBusy ? 'Se descarca...' : 'Descarca narative' }}<i class="pl-2 pi pi-download"></i>
+            </button>
           </div>
         </div>
       </div>
