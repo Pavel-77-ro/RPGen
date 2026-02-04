@@ -11,6 +11,9 @@ import { RouterLink } from 'vue-router'
 const loading = ref(false)
 const err = ref('')
 const experts = ref([])
+const deleteModalOpen = ref(false)
+const deleteModalBusy = ref(false)
+const deleteTarget = ref(null)
 
 const form = reactive({
   uid: '',
@@ -61,17 +64,29 @@ async function createExpert() {
   }
 }
 
-async function removeExpert(id) {
+function openDeleteModal(expert) {
+  deleteTarget.value = expert
+  deleteModalOpen.value = true
+}
+
+function closeDeleteModal() {
+  deleteModalOpen.value = false
+  deleteTarget.value = null
+  deleteModalBusy.value = false
+}
+
+async function confirmDelete() {
+  if (!deleteTarget.value) return
   err.value = ''
-  if (!confirm('Delete this expert? Asta va sterge si informatiile din rapoarte!')) return
-  loading.value = true
+  deleteModalBusy.value = true
   try {
-    await adminDeleteExpert(id)
+    await adminDeleteExpert(deleteTarget.value.id)
     await loadExperts()
+    closeDeleteModal()
   } catch (e) {
     err.value = e?.response?.data?.error || 'Failed to delete expert'
   } finally {
-    loading.value = false
+    deleteModalBusy.value = false
   }
 }
 
@@ -297,7 +312,7 @@ onMounted(loadExperts)
 
               <button
                 class="rounded-xl border px-3 py-2 text-sm bg-red-500 text-white flex items-center cursor-pointer hover:scale-105"
-                @click="removeExpert(e.id)"
+                @click="openDeleteModal(e)"
                 :disabled="loading"
               >
                 Delete <i class="pi pi-trash pl-2"></i>
@@ -426,6 +441,56 @@ onMounted(loadExperts)
               @click="saveMonths"
             >
               {{ monthsModalBusy ? 'Saving...' : 'Save' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Confirm Modal -->
+    <div v-if="deleteModalOpen" class="fixed inset-0 z-50">
+      <div class="absolute inset-0 bg-black/40" @click="closeDeleteModal"></div>
+
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="w-full max-w-md rounded-2xl bg-white shadow-xl border p-5">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="text-lg font-semibold text-red-600">Delete expert?</div>
+              <div class="text-sm text-gray-600 mt-1">
+                This will remove the expert and any related report data.
+              </div>
+            </div>
+
+            <button
+              class="rounded-xl border px-3 py-2 text-sm cursor-pointer"
+              @click="closeDeleteModal"
+              :disabled="deleteModalBusy"
+            >
+              Close
+            </button>
+          </div>
+
+          <div class="mt-4 rounded-xl border bg-gray-50 p-3 text-sm">
+            <div class="font-medium text-gray-800">{{ deleteTarget?.name }}</div>
+            <div class="text-gray-600">{{ deleteTarget?.position }}</div>
+            <div class="text-gray-500 text-xs mt-1">{{ deleteTarget?.uid }}</div>
+          </div>
+
+          <div class="mt-4 flex gap-2 justify-end">
+            <button
+              class="rounded-xl border px-4 py-2 text-sm cursor-pointer transition hover:scale-105"
+              @click="closeDeleteModal"
+              :disabled="deleteModalBusy"
+            >
+              Cancel
+            </button>
+
+            <button
+              class="rounded-xl bg-red-600 text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer transition hover:scale-105"
+              :disabled="deleteModalBusy"
+              @click="confirmDelete"
+            >
+              {{ deleteModalBusy ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         </div>

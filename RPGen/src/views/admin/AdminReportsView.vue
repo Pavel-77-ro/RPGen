@@ -6,6 +6,7 @@ import {
   adminVerifyReport,
   adminDownloadDocx,
   adminDownloadNarrativesDocx,
+  adminDownloadAnexa13,
 } from '@/services/adminReportsApi'
 import { RouterLink } from 'vue-router'
 
@@ -24,6 +25,7 @@ const editorRows = ref([]) // [{ code, hours }]
 const editorBusy = ref(false)
 const editorErr = ref('')
 const narrativesBusy = ref(false)
+const anexa13Busy = ref(false)
 
 const monthName = computed(() => {
   const d = new Date(year.value, month.value - 1, 1)
@@ -350,54 +352,77 @@ async function downloadNarratives() {
   }
 }
 
+async function downloadAnexa13() {
+  err.value = ''
+  anexa13Busy.value = true
+  try {
+    const { blob, filename } = await adminDownloadAnexa13(year.value, month.value)
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    err.value = e?.response?.data?.error || 'Download failed'
+  } finally {
+    anexa13Busy.value = false
+  }
+}
+
 onMounted(load)
 </script>
 
 <template>
-  <div class="p-6 max-w-7xl mx-auto">
-    <div class="flex items-center justify-between gap-3">
-      <h1 class="text-xl font-semibold">Manager — Rapoarte</h1>
+  <div class="p-6 max-w-350 mx-auto">
+    <div class="max-w-5xl mx-auto mb-6">
+      <div class="flex items-center justify-between gap-3">
+        <h1 class="text-xl font-semibold">Manager — Rapoarte</h1>
 
-      <div class="flex gap-2">
-        <RouterLink
-          class="rounded-xl font-semibold border px-3 py-2 text-black hover:text-white hover:bg-black flex items-center transition"
-          to="/admin/experts">
-          Experts <i class="pl-2 pi pi-users"></i>
-        </RouterLink>
+        <div class="flex gap-2">
+          <RouterLink
+            class="rounded-xl font-semibold border px-3 py-2 text-black hover:text-white hover:bg-black flex items-center transition"
+            to="/admin/experts">
+            Experts <i class="pl-2 pi pi-users"></i>
+          </RouterLink>
+        </div>
+      </div>
+
+      <div class="mt-6 rounded-2xl border p-5 flex flex-col md:flex-row md:items-end gap-3">
+        <div>
+          <label class="text-sm text-gray-600 pr-1">Year</label>
+          <input v-model.number="year" type="number" class="w-full md:w-40 rounded-xl border px-3 py-2" />
+        </div>
+
+        <div>
+          <label class="text-sm text-gray-600 pl-2 pr-1">Month</label>
+          <select v-model.number="month" class="w-full md:w-56 rounded-xl border px-3 py-2">
+            <option v-for="m in 12" :key="m" :value="m">
+              {{
+                new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2026, m - 1, 1))
+              }}
+            </option>
+          </select>
+        </div>
+
+        <button
+          class="rounded-xl bg-black text-white px-4 py-2 disabled:opacity-50 cursor-pointer hover:scale-105 transition"
+          :disabled="loading" @click="load">
+          {{ loading ? 'Loading...' : 'Load' }}
+        </button>
+
+        <div class="text-sm text-gray-800 md:ml-auto">
+          Showing: <span class="font-semibold">{{ monthName }} {{ year }}</span>
+        </div>
+      </div>
+
+      <div v-if="err" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+        {{ err }}
       </div>
     </div>
 
-    <div class="mt-6 rounded-2xl border p-5 flex flex-col md:flex-row md:items-end gap-3">
-      <div>
-        <label class="text-sm text-gray-600 pr-1">Year</label>
-        <input v-model.number="year" type="number" class="w-full md:w-40 rounded-xl border px-3 py-2" />
-      </div>
-
-      <div>
-        <label class="text-sm text-gray-600 pl-2 pr-1">Month</label>
-        <select v-model.number="month" class="w-full md:w-56 rounded-xl border px-3 py-2">
-          <option v-for="m in 12" :key="m" :value="m">
-            {{
-              new Intl.DateTimeFormat('en-US', { month: 'long' }).format(new Date(2026, m - 1, 1))
-            }}
-          </option>
-        </select>
-      </div>
-
-      <button
-        class="rounded-xl bg-black text-white px-4 py-2 disabled:opacity-50 cursor-pointer hover:scale-105 transition"
-        :disabled="loading" @click="load">
-        {{ loading ? 'Loading...' : 'Load' }}
-      </button>
-
-      <div class="text-sm text-gray-800 md:ml-auto">
-        Showing: <span class="font-semibold">{{ monthName }} {{ year }}</span>
-      </div>
-    </div>
-
-    <div v-if="err" class="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-      {{ err }}
-    </div>
 
     <!-- Dashboard layout -->
     <div class="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -530,9 +555,10 @@ onMounted(load)
 
                   <!-- Total -->
                   <span class="inline-flex items-center gap-2 rounded-full border px-2 py-0.5 ml-auto" :class="((it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) >= 85)
-                      ? 'bg-red-50 text-red-700 border-red-200'
-                      : 'bg-gray-50 text-gray-700'
-                    " :title="'Total ore (sumă): ' + (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) + 'h'">
+                    ? 'bg-red-50 text-red-700 border-red-200'
+                    : 'bg-gray-50 text-gray-700'
+                    "
+                    :title="'Total ore (sumă): ' + (it.report.rows || []).reduce((sum, x) => sum + (Number(x.hours) || 0), 0) + 'h'">
                     <span>Total ore:</span>
 
                     <span class="font-medium">
@@ -563,128 +589,161 @@ onMounted(load)
         </div>
       </div>
 
-      <!-- RIGHT: Stats panel -->
-      <div class="rounded-2xl border overflow-hidden">
-        <div class="px-5 py-4 border-b">
-          <h2 class="font-medium">Statistics</h2>
-          <div class="text-sm text-gray-500">Overview for selected month</div>
+      <!-- RIGHT: Exports + Stats column -->
+      <div class="flex flex-col gap-6">
+        <!-- Exports panel -->
+        <div class="rounded-2xl border overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="font-medium">Exports</h2>
+            <div class="text-sm text-gray-500">Generate official files for the selected month</div>
+          </div>
+          <div class="p-5 space-y-4">
+            <div class="rounded-xl border bg-gray-50 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="text-sm font-semibold">Narratives DOCX</div>
+                  <div class="text-xs text-gray-600 mt-1">
+                    Grouped expert narratives by role. Ready for PM review.
+                  </div>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full border bg-white text-gray-700">DOCX</span>
+              </div>
+              <button
+                class="mt-3 w-full rounded-xl bg-black text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition"
+                :disabled="narrativesBusy" @click="downloadNarratives">
+                {{ narrativesBusy ? 'Se descarca...' : 'Descarca narative' }}<i class="pl-2 pi pi-download"></i>
+              </button>
+            </div>
+
+            <div class="rounded-xl border bg-emerald-50 p-4">
+              <div class="flex items-start justify-between gap-3">
+                <div>
+                  <div class="text-sm font-semibold text-emerald-900">Anexa 13 (Excel)</div>
+                  <div class="text-xs text-emerald-800 mt-1">
+                    Official list of experts and activities, auto-filled.
+                  </div>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full border bg-white text-emerald-700">XLSX</span>
+              </div>
+              <button
+                class="mt-3 w-full rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition hover:bg-emerald-700"
+                :disabled="anexa13Busy" @click="downloadAnexa13">
+                {{ anexa13Busy ? 'Se descarca...' : 'Download Anexa 13' }}<i class="pl-2 pi pi-file-excel"></i>
+              </button>
+            </div>
+          </div>
         </div>
 
-        <div class="p-5 space-y-5">
-          <div class="grid grid-cols-2 gap-3">
-            <div class="rounded-2xl border p-4 bg-gray-50">
-              <div class="text-xs text-gray-500">Total</div>
-              <div class="text-xl font-semibold">{{ stats.total }}</div>
-            </div>
-            <div class="rounded-2xl bg-green-100 border p-4">
-              <div class="text-xs text-gray-500">Finalizat</div>
-              <div class="text-xl font-semibold">{{ stats.completed }}</div>
-            </div>
-            <div class="rounded-2xl border p-4 bg-blue-100">
-              <div class="text-xs text-gray-500">Completat Mihai</div>
-              <div class="text-xl font-semibold">{{ stats.waitingExpert }}</div>
-            </div>
-            <div class="rounded-2xl border p-4 bg-yellow-100">
-              <div class="text-xs text-gray-500">Draft</div>
-              <div class="text-xl font-semibold">{{ stats.draft }}</div>
-            </div>
+        <!-- Stats panel -->
+        <div class="rounded-2xl border overflow-hidden">
+          <div class="px-5 py-4 border-b">
+            <h2 class="font-medium">Statistics</h2>
+            <div class="text-sm text-gray-500">Overview for selected month</div>
           </div>
 
-          <div class="rounded-2xl border p-4">
-            <div class="flex items-center justify-between">
-              <div class="text-sm font-medium">Progres lunar</div>
-              <div class="text-sm text-gray-600">{{ stats.completedPct }}%</div>
+          <div class="p-5 space-y-5">
+            <div class="grid grid-cols-2 gap-3">
+              <div class="rounded-2xl border p-4 bg-gray-50">
+                <div class="text-xs text-gray-500">Total</div>
+                <div class="text-xl font-semibold">{{ stats.total }}</div>
+              </div>
+              <div class="rounded-2xl bg-green-100 border p-4">
+                <div class="text-xs text-gray-500">Finalizat</div>
+                <div class="text-xl font-semibold">{{ stats.completed }}</div>
+              </div>
+              <div class="rounded-2xl border p-4 bg-blue-100">
+                <div class="text-xs text-gray-500">Completat Mihai</div>
+                <div class="text-xl font-semibold">{{ stats.waitingExpert }}</div>
+              </div>
+              <div class="rounded-2xl border p-4 bg-yellow-100">
+                <div class="text-xs text-gray-500">Draft</div>
+                <div class="text-xl font-semibold">{{ stats.draft }}</div>
+              </div>
             </div>
-            <div class="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
-              <div class="h-2 bg-gray-800 " :style="{ width: stats.completedPct + '%' }"></div>
-            </div>
-            <div class="mt-2 text-xs text-gray-500">
-              Remaining: {{ stats.total - stats.completed }} experts
-            </div>
-          </div>
 
-          <div class="rounded-2xl border p-4">
-            <div class="text-sm font-medium mb-3">Distribution</div>
+            <div class="rounded-2xl border p-4">
+              <div class="flex items-center justify-between">
+                <div class="text-sm font-medium">Progres lunar</div>
+                <div class="text-sm text-gray-600">{{ stats.completedPct }}%</div>
+              </div>
+              <div class="mt-3 h-2 rounded-full bg-gray-200 overflow-hidden">
+                <div class="h-2 bg-gray-800 " :style="{ width: stats.completedPct + '%' }"></div>
+              </div>
+              <div class="mt-2 text-xs text-gray-500">
+                Remaining: {{ stats.total - stats.completed }} experts
+              </div>
+            </div>
 
-            <div class="flex items-center gap-4">
-              <svg viewBox="0 0 36 36" class="w-20 h-20">
-                <path d="M18 2.0845
+            <div class="rounded-2xl border p-4">
+              <div class="text-sm font-medium mb-3">Distribution</div>
+
+              <div class="flex items-center gap-4">
+                <svg viewBox="0 0 36 36" class="w-20 h-20">
+                  <path d="M18 2.0845
                      a 15.9155 15.9155 0 0 1 0 31.831
                      a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-opacity="0.15"
-                  stroke-width="3" />
-                <template v-for="(seg, idx) in donut" :key="idx">
-                  <path d="M18 2.0845
+                    stroke-width="3" />
+                  <template v-for="(seg, idx) in donut" :key="idx">
+                    <path d="M18 2.0845
                     a 15.9155 15.9155 0 0 1 0 31.831
                      a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" :stroke="DONUT_STROKES[donutKey(seg.label)]"
-                    stroke-width="3" :stroke-dasharray="seg.size + ' ' + (100 - seg.size)"
-                    :stroke-dashoffset="-seg.offset" />
-                </template>
-              </svg>
+                      stroke-width="3" :stroke-dasharray="seg.size + ' ' + (100 - seg.size)"
+                      :stroke-dashoffset="-seg.offset" />
+                  </template>
+                </svg>
 
-              <div class="text-sm text-gray-700 space-y-1">
-                <div>
-                  Finalizate:
-                  <span class="font-medium text-base text-green-800">{{ stats.completed }}</span>
-                </div>
-                <div>
-                  Completat Mihai:
-                  <span class="font-medium text-base text-blue-800">{{ stats.waitingExpert }}</span>
-                </div>
-                <div>
-                  Draft:
-                  <span class="font-medium text-base text-yellow-800">{{ stats.draft }}</span>
-                </div>
-                <div>
-                  Not created:
-                  <span class="font-medium text-base text-black">{{ stats.notCreated }}</span>
+                <div class="text-sm text-gray-700 space-y-1">
+                  <div>
+                    Finalizate:
+                    <span class="font-medium text-base text-green-800">{{ stats.completed }}</span>
+                  </div>
+                  <div>
+                    Completat Mihai:
+                    <span class="font-medium text-base text-blue-800">{{ stats.waitingExpert }}</span>
+                  </div>
+                  <div>
+                    Draft:
+                    <span class="font-medium text-base text-yellow-800">{{ stats.draft }}</span>
+                  </div>
+                  <div>
+                    Not created:
+                    <span class="font-medium text-base text-black">{{ stats.notCreated }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
 
-          <div class="rounded-2xl border p-4">
-            <div class="text-sm font-medium">To-do</div>
-            <div v-if="todoList.length === 0" class="mt-2 text-sm text-gray-600">
-              Nothing pending 🎉
+            <div class="rounded-2xl border p-4">
+              <div class="text-sm font-medium">To-do</div>
+              <div v-if="todoList.length === 0" class="mt-2 text-sm text-gray-600">
+                Nothing pending 🎉
+              </div>
+              <ul v-else class="mt-2 space-y-2 text-sm">
+                <li v-for="(t, i) in todoList" :key="i" class="flex items-center justify-between">
+                  <span class="text-gray-700">{{ t.label }}</span>
+                  <span class="rounded-full border px-2 py-0.5 text-sm text-black bg-gray-50">{{
+                    t.count
+                  }}</span>
+                </li>
+              </ul>
             </div>
-            <ul v-else class="mt-2 space-y-2 text-sm">
-              <li v-for="(t, i) in todoList" :key="i" class="flex items-center justify-between">
-                <span class="text-gray-700">{{ t.label }}</span>
-                <span class="rounded-full border px-2 py-0.5 text-sm text-black bg-gray-50">{{
-                  t.count
-                }}</span>
-              </li>
-            </ul>
-          </div>
 
-          <div class="rounded-2xl border p-4">
-            <div class="text-sm font-medium mb-4">Recent updates</div>
-            <div v-if="recentUpdates.length === 0" class="mt-2 text-sm text-gray-600">
-              No updates yet.
-            </div>
-            <div v-else class="mt-2 space-y-2 text-sm">
-              <div v-for="it in recentUpdates" :key="it.expert.id" class="flex items-center justify-between">
-                <div class="truncate">
-                  <span class="font-medium">{{ it.expert.name }}</span>
-                </div>
-                <div class="text-xs text-gray-500">
-                  {{ new Date(it.report.updatedAt).toLocaleString() }}
+            <div class="rounded-2xl border p-4">
+              <div class="text-sm font-medium mb-4">Recent updates</div>
+              <div v-if="recentUpdates.length === 0" class="mt-2 text-sm text-gray-600">
+                No updates yet.
+              </div>
+              <div v-else class="mt-2 space-y-2 text-sm">
+                <div v-for="it in recentUpdates" :key="it.expert.id" class="flex items-center justify-between">
+                  <div class="truncate">
+                    <span class="font-medium">{{ it.expert.name }}</span>
+                  </div>
+                  <div class="text-xs text-gray-500">
+                    {{ new Date(it.report.updatedAt).toLocaleString() }}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div class="rounded-2xl border p-4">
-            <div class="text-sm font-medium mb-3">Exports</div>
-            <div class="text-xs text-gray-500 mb-3">
-              Grouped narratives by expert position for the selected month.
-            </div>
-            <button
-              class="rounded-xl bg-black text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition"
-              :disabled="narrativesBusy"
-              @click="downloadNarratives">
-              {{ narrativesBusy ? 'Se descarca...' : 'Descarca narative' }}<i class="pl-2 pi pi-download"></i>
-            </button>
           </div>
         </div>
       </div>

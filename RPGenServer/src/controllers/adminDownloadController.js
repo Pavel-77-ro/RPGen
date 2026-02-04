@@ -2,6 +2,7 @@ const Expert = require("../models/Expert");
 const MonthlyReport = require("../models/MonthlyReport");
 const { isValidObjectId } = require("../services/idService");
 const { getDefaultTemplatePath, getNarrativesTemplatePath, renderDocx } = require("../services/docxService");
+const { renderAnexa13Workbook } = require("../services/xlsxService");
 const { formatRoMonthYearUpper, lastDayOfMonth, formatDateDDMMYYYY } = require("../services/dateService");
 
 function parseIntStrict(v) {
@@ -26,9 +27,20 @@ const TARGET_POSITIONS = [
   "Expert selectie si mentinere GT",
   "Expert probleme mediu",
   "Expert parteneriate",
+  "Cadru didactic supervizor",
+  "Tutor practica",
 ];
 
 const NO_ACTIVITY_TEXT = "Nu exista activitate in aceasta luna.";
+
+const POSITION_ORDER = [
+  "Expert comunicare GT si angajatori",
+  "Expert selectie si mentinere GT",
+  "Expert probleme mediu",
+  "Expert parteneriate",
+  "Cadru didactic supervizor",
+  "Tutor practica",
+];
 
 // GET /admin/reports/:expertId/:year/:month/download
 async function downloadAdminReport(req, res, next) {
@@ -150,4 +162,102 @@ async function downloadAdminNarratives(req, res, next) {
   }
 }
 
-module.exports = { downloadAdminReport, downloadAdminNarratives };
+function buildActivityCode(title) {
+  const t = String(title || "").trim();
+  if (!t) return "";
+  return t.split(" ")[0];
+}
+
+// GET /admin/reports/:year/:month/anexa13/download
+async function downloadAdminAnexa13(req, res, next) {
+  try {
+    const { year: yearStr, month: monthStr } = req.params;
+
+    const year = parseIntStrict(yearStr);
+    const month = parseIntStrict(monthStr);
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({ ok: false, error: "Invalid year/month" });
+    }
+
+    const monthKey = `${year}-${String(month).padStart(2, "0")}`;
+
+    const experts = await Expert.aggregate([
+      { $match: { activeMonths: monthKey } },
+      {
+        $addFields: {
+          positionRank: {
+            $let: {
+              vars: { idx: { $indexOfArray: [POSITION_ORDER, "$position"] } },
+              in: { $cond: [{ $eq: ["$$idx", -1] }, 999, "$$idx"] },
+            },
+          },
+        },
+      },
+      { $sort: { positionRank: 1, name: 1, createdAt: 1 } },
+      { $project: { positionRank: 0 } },
+    ]).collation({ locale: "ro", strength: 1 });
+
+    const expertIds = experts.map((e) => e._id);
+
+    const reports = await MonthlyReport.find({
+      expertId: { $in: expertIds },
+      year,
+      month,
+    })
+      .lean()
+      .exec();
+
+    const byExpertId = new Map(reports.map((r) => [String(r.expertId), r]));
+
+    const rows = experts.map((e) => {
+      const report = byExpertId.get(String(e._id));
+      const reportRows = report?.rows || [];
+
+      const activityCodes = reportRows
+        .map((r) => buildActivityCode(r.title))
+        .filter((x) => x);
+
+      const activities =
+        activityCodes.length > 0
+          ? Array.from(new Set(activityCodes)).join(", ")
+          : "MISS";
+
+      const activitiesWithHours = reportRows
+        .map((r) => {
+          const code = buildActivityCode(r.title);
+          const hours = Number(r.hours);
+          if (!code || !Number.isFinite(hours)) return "";
+          return `${code}-${hours}`;
+        })
+        .filter((x) => x)
+        .join("\n");
+
+      return {
+        name: String(e.name || "").toUpperCase(),
+        position: e.position,
+        activities,
+        activitiesWithHours: activitiesWithHours || "MISS",
+      };
+    });
+
+    const buf = await renderAnexa13Workbook({ year, month, rows });
+
+    const monthLabel = formatRoMonthYearUpper(year, month);
+    const filename = `Anexa_13_${safeFilename(monthLabel)}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(Buffer.from(buf));
+  } catch (e) {
+    next(e);
+  }
+}
+
+module.exports = {
+  downloadAdminReport,
+  downloadAdminNarratives,
+  downloadAdminAnexa13,
+};

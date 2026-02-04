@@ -55,3 +55,16 @@ export async function adminDownloadNarrativesDocx(year, month) {
 
   return { blob: res.data, filename };
 }
+
+export async function adminDownloadAnexa13(year, month) {
+  withAdminAuth();
+  const res = await api.get(`/admin/reports/${year}/${month}/anexa13/download`, {
+    responseType: "blob",
+  });
+
+  const cd = res.headers?.["content-disposition"] || "";
+  const match = /filename="([^"]+)"/.exec(cd);
+  const filename = match?.[1] || "anexa_13.xlsx";
+
+  return { blob: res.data, filename };
+}
