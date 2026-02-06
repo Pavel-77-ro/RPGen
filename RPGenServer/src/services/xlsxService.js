@@ -53,7 +53,8 @@ async function renderAnexa13Workbook({ year, month, rows }) {
   // Remove any existing filters from the template; they can hide rows.
   ws.autoFilter = null;
 
-  const monthDate = new Date(year, month - 1, 1);
+  const fallbackMonthDate =
+    year && month ? new Date(year, month - 1, 1) : null;
 
   // Replace the template data block with only the needed rows
   if (ws.rowCount >= startRow) {
@@ -67,7 +68,7 @@ async function renderAnexa13Workbook({ year, month, rows }) {
     r.name || "MISS",
     r.partnerName || defaultPartner || "MISS",
     r.activities || "MISS",
-    monthDate,
+    r.monthDate || fallbackMonthDate || "",
     r.activitiesWithHours || "MISS",
   ]);
 

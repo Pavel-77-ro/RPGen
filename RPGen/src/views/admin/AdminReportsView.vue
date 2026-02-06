@@ -618,7 +618,7 @@ onMounted(load)
             <div class="rounded-xl border bg-emerald-50 p-4">
               <div class="flex items-start justify-between gap-3">
                 <div>
-                  <div class="text-sm font-semibold text-emerald-900">Anexa 13 (Excel)</div>
+                  <div class="text-sm font-semibold text-emerald-900">Anexa 13 Lunara</div>
                   <div class="text-xs text-emerald-800 mt-1">
                     Official list of experts and activities, auto-filled.
                   </div>

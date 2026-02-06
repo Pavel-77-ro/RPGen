@@ -30,3 +30,17 @@ export async function adminUpdateExpertMonths(id, months) {
   return res.data.expert;
 }
 
+export async function adminDownloadAnexa13Range(fromYear, fromMonth, toYear, toMonth) {
+  withAdminAuth();
+  const res = await api.get(`/admin/reports/anexa13/range/download`, {
+    params: { fromYear, fromMonth, toYear, toMonth },
+    responseType: "blob",
+  });
+
+  const cd = res.headers?.["content-disposition"] || "";
+  const match = /filename="([^"]+)"/.exec(cd);
+  const filename = match?.[1] || "anexa_13_range.xlsx";
+
+  return { blob: res.data, filename };
+}
+

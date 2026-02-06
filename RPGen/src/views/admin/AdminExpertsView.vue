@@ -5,6 +5,7 @@ import {
   adminCreateExpert,
   adminDeleteExpert,
   adminUpdateExpertMonths,
+  adminDownloadAnexa13Range,
 } from '@/services/adminApi'
 import { RouterLink } from 'vue-router'
 
@@ -14,6 +15,16 @@ const experts = ref([])
 const deleteModalOpen = ref(false)
 const deleteModalBusy = ref(false)
 const deleteTarget = ref(null)
+const createOpen = ref(false)
+const rangeBusy = ref(false)
+
+const now = new Date()
+const rangeFromYear = ref(now.getFullYear())
+const rangeFromMonth = ref(now.getMonth() + 1)
+const rangeToYear = ref(now.getFullYear())
+const rangeToMonth = ref(now.getMonth() + 1)
+
+const rangeErr = ref('')
 
 const form = reactive({
   uid: '',
@@ -90,6 +101,42 @@ async function confirmDelete() {
   }
 }
 
+function rangeIndex(year, month) {
+  return year * 12 + (month - 1)
+}
+
+async function downloadAnexa13Range() {
+  rangeErr.value = ''
+  const fromIdx = rangeIndex(rangeFromYear.value, rangeFromMonth.value)
+  const toIdx = rangeIndex(rangeToYear.value, rangeToMonth.value)
+  if (fromIdx > toIdx) {
+    rangeErr.value = 'Invalid range: From must be before To'
+    return
+  }
+
+  rangeBusy.value = true
+  try {
+    const { blob, filename } = await adminDownloadAnexa13Range(
+      rangeFromYear.value,
+      rangeFromMonth.value,
+      rangeToYear.value,
+      rangeToMonth.value,
+    )
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch (e) {
+    rangeErr.value = e?.response?.data?.error || 'Download failed'
+  } finally {
+    rangeBusy.value = false
+  }
+}
+
 /**
  * ===== Edit Months Modal State =====
  */
@@ -99,7 +146,6 @@ const monthsModalErr = ref('')
 const monthsModalExpert = ref(null) // expert object currently edited
 const selectedMonths = ref([]) // ["2026-01", "2026-03"]
 
-const now = new Date()
 const pickYear = ref(now.getFullYear())
 const pickMonth = ref(now.getMonth() + 1)
 
@@ -188,83 +234,158 @@ onMounted(loadExperts)
       {{ err }}
     </div>
 
-    <!-- Create form -->
+    <!-- Exports (Range) -->
     <div class="mt-6 rounded-2xl border p-5">
-      <h2 class="font-semibold">Add expert</h2>
+      <h2 class="font-semibold">Exports Anexa 13</h2>
+      <p class="mt-1 text-sm text-gray-600">
+        Generate a single sheet across a month interval, ordered by expert name.
+      </p>
+
+      <div
+        v-if="rangeErr"
+        class="mt-3 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+      >
+        {{ rangeErr }}
+      </div>
 
       <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label class="text-sm text-gray-600">uid (username)</label>
-          <input
-            v-model="form.uid"
-            class="w-full rounded-xl border px-3 py-2"
-            placeholder="e.g. fianu.danut"
-          />
+        <div class="rounded-xl border p-3 bg-gray-50">
+          <div class="text-xs font-medium text-gray-600 mb-2">From</div>
+          <div class="flex gap-2 items-center">
+            <input
+              v-model.number="rangeFromYear"
+              type="number"
+              class="w-28 rounded-xl border px-3 py-2"
+            />
+            <select v-model.number="rangeFromMonth" class="flex-1 rounded-xl border px-3 py-2">
+              <option v-for="m in 12" :key="m" :value="m">
+                {{
+                  new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
+                    new Date(2026, m - 1, 1),
+                  )
+                }}
+              </option>
+            </select>
+          </div>
         </div>
 
-        <div>
-          <label class="text-sm text-gray-600">name</label>
-          <input
-            v-model="form.name"
-            class="w-full rounded-xl border px-3 py-2"
-            placeholder="FIANU DĂNUȚ"
-          />
-        </div>
-
-        <div>
-          <label class="text-sm text-gray-600">position</label>
-          <input
-            v-model="form.position"
-            class="w-full rounded-xl border px-3 py-2"
-            placeholder="Expert ..."
-          />
-        </div>
-
-        <div>
-          <label class="text-sm text-gray-600">contract</label>
-          <input
-            v-model="form.contract"
-            class="w-full rounded-xl border px-3 py-2"
-            placeholder="Contract ..."
-          />
-        </div>
-
-        <div class="md:col-span-2">
-          <label class="text-sm text-gray-600">responsibility (static)</label>
-          <textarea
-            v-model="form.responsibility"
-            class="w-full rounded-xl border px-3 py-2 min-h-22.5"
-            placeholder="Responsabilități generale..."
-          />
+        <div class="rounded-xl border p-3 bg-gray-50">
+          <div class="text-xs font-medium text-gray-600 mb-2">To</div>
+          <div class="flex gap-2 items-center">
+            <input
+              v-model.number="rangeToYear"
+              type="number"
+              class="w-28 rounded-xl border px-3 py-2"
+            />
+            <select v-model.number="rangeToMonth" class="flex-1 rounded-xl border px-3 py-2">
+              <option v-for="m in 12" :key="m" :value="m">
+                {{
+                  new Intl.DateTimeFormat('en-US', { month: 'long' }).format(
+                    new Date(2026, m - 1, 1),
+                  )
+                }}
+              </option>
+            </select>
+          </div>
         </div>
       </div>
 
-      <div class="mt-4 flex gap-2">
+      <div class="mt-4">
         <button
-          class="rounded-xl bg-black text-white px-4 py-2 disabled:opacity-50 cursor-pointer"
-          :disabled="
-            loading ||
-            !form.uid.trim() ||
-            !form.name.trim() ||
-            !form.position.trim() ||
-            !form.contract.trim() ||
-            !form.responsibility.trim()
-          "
-          @click="createExpert"
+          class="rounded-xl bg-emerald-600 text-white px-4 py-2 text-sm disabled:opacity-50 cursor-pointer hover:scale-105 transition hover:bg-emerald-700"
+          :disabled="rangeBusy"
+          @click="downloadAnexa13Range"
         >
-          {{ loading ? 'Saving...' : 'Create' }}
-        </button>
-
-        <button
-          class="rounded-xl border px-4 py-2 cursor-pointer"
-          :disabled="loading"
-          @click="resetForm"
-        >
-          Clear
+          {{ rangeBusy ? 'Se descarca...' : 'Download Anexa 13' }}
+          <i class="pl-2 pi pi-file-excel"></i>
         </button>
       </div>
     </div>
 
+    <!-- Create form -->
+    <div class="mt-6 rounded-2xl border overflow-hidden">
+      <button
+        class="w-full flex items-center justify-between px-5 py-4 border-b text-left font-semibold"
+        @click="createOpen = !createOpen"
+      >
+        <span>Add expert</span>
+        <i class="pi" :class="createOpen ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+      </button>
+
+      <div v-if="createOpen" class="p-5">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-sm text-gray-600">uid (username)</label>
+            <input
+              v-model="form.uid"
+              class="w-full rounded-xl border px-3 py-2"
+              placeholder="e.g. fianu.danut"
+            />
+          </div>
+
+          <div>
+            <label class="text-sm text-gray-600">name</label>
+            <input
+              v-model="form.name"
+              class="w-full rounded-xl border px-3 py-2"
+              placeholder="FIANU DĂNUȚ"
+            />
+          </div>
+
+          <div>
+            <label class="text-sm text-gray-600">position</label>
+            <input
+              v-model="form.position"
+              class="w-full rounded-xl border px-3 py-2"
+              placeholder="Expert ..."
+            />
+          </div>
+
+          <div>
+            <label class="text-sm text-gray-600">contract</label>
+            <input
+              v-model="form.contract"
+              class="w-full rounded-xl border px-3 py-2"
+              placeholder="Contract ..."
+            />
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="text-sm text-gray-600">responsibility (static)</label>
+            <textarea
+              v-model="form.responsibility"
+              class="w-full rounded-xl border px-3 py-2 min-h-22.5"
+              placeholder="Responsabilități generale..."
+            />
+          </div>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button
+            class="rounded-xl bg-black text-white px-4 py-2 disabled:opacity-50 cursor-pointer"
+            :disabled="
+              loading ||
+              !form.uid.trim() ||
+              !form.name.trim() ||
+              !form.position.trim() ||
+              !form.contract.trim() ||
+              !form.responsibility.trim()
+            "
+            @click="createExpert"
+          >
+            {{ loading ? 'Saving...' : 'Create' }}
+          </button>
+
+          <button
+            class="rounded-xl border px-4 py-2 cursor-pointer"
+            :disabled="loading"
+            @click="resetForm"
+          >
+            Clear
+          </button>
+        </div>
+      </div>
+    </div>
     <!-- List -->
     <div class="mt-6 rounded-2xl border overflow-hidden">
       <div class="flex items-center justify-between px-5 py-4 border-b">

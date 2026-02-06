@@ -256,8 +256,142 @@ async function downloadAdminAnexa13(req, res, next) {
   }
 }
 
+function monthKeyFromParts(year, month) {
+  return `${year}-${String(month).padStart(2, "0")}`;
+}
+
+function listMonthsInRange(fromYear, fromMonth, toYear, toMonth) {
+  const months = [];
+  let y = fromYear;
+  let m = fromMonth;
+  while (y < toYear || (y === toYear && m <= toMonth)) {
+    months.push({ year: y, month: m, key: monthKeyFromParts(y, m) });
+    m += 1;
+    if (m > 12) {
+      m = 1;
+      y += 1;
+    }
+  }
+  return months;
+}
+
+// GET /admin/reports/anexa13/range/download?fromYear=2025&fromMonth=9&toYear=2025&toMonth=11
+async function downloadAdminAnexa13Range(req, res, next) {
+  try {
+    const fromYear = parseIntStrict(req.query.fromYear);
+    const fromMonth = parseIntStrict(req.query.fromMonth);
+    const toYear = parseIntStrict(req.query.toYear);
+    const toMonth = parseIntStrict(req.query.toMonth);
+
+    if (
+      !fromYear ||
+      !fromMonth ||
+      !toYear ||
+      !toMonth ||
+      fromMonth < 1 ||
+      fromMonth > 12 ||
+      toMonth < 1 ||
+      toMonth > 12
+    ) {
+      return res.status(400).json({ ok: false, error: "Invalid range" });
+    }
+
+    const fromIndex = fromYear * 12 + (fromMonth - 1);
+    const toIndex = toYear * 12 + (toMonth - 1);
+    if (fromIndex > toIndex) {
+      return res.status(400).json({ ok: false, error: "Invalid range order" });
+    }
+
+    const rangeMonths = listMonthsInRange(fromYear, fromMonth, toYear, toMonth);
+    const rangeKeys = rangeMonths.map((m) => m.key);
+
+    const experts = await Expert.find({
+      activeMonths: { $in: rangeKeys },
+    })
+      .lean()
+      .exec();
+
+    const expertIds = experts.map((e) => e._id);
+
+    const reports = await MonthlyReport.find({
+      expertId: { $in: expertIds },
+      year: { $gte: fromYear, $lte: toYear },
+    })
+      .lean()
+      .exec();
+
+    const reportMap = new Map(
+      reports.map((r) => [
+        `${String(r.expertId)}|${monthKeyFromParts(r.year, r.month)}`,
+        r,
+      ])
+    );
+
+    const rows = [];
+    const sortedExperts = [...experts].sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "ro", {
+        sensitivity: "base",
+      })
+    );
+
+    for (const e of sortedExperts) {
+      const activeSet = new Set(e.activeMonths || []);
+      for (const m of rangeMonths) {
+        if (!activeSet.has(m.key)) continue;
+        const report = reportMap.get(`${String(e._id)}|${m.key}`);
+        const reportRows = report?.rows || [];
+
+        const activityCodes = reportRows
+          .map((r) => buildActivityCode(r.title))
+          .filter((x) => x);
+
+        const activities =
+          activityCodes.length > 0
+            ? Array.from(new Set(activityCodes)).join(", ")
+            : "MISS";
+
+        const activitiesWithHours = reportRows
+          .map((r) => {
+            const code = buildActivityCode(r.title);
+            const hours = Number(r.hours);
+            if (!code || !Number.isFinite(hours)) return "";
+            return `${code}-${hours}`;
+          })
+          .filter((x) => x)
+          .join("\n");
+
+        rows.push({
+          name: String(e.name || "").toUpperCase(),
+          position: e.position,
+          activities,
+          activitiesWithHours: activitiesWithHours || "MISS",
+          monthDate: new Date(m.year, m.month - 1, 1),
+        });
+      }
+    }
+
+    const buf = await renderAnexa13Workbook({ rows });
+
+    const filename = `Anexa_13_${safeFilename(
+      `${fromYear}-${String(fromMonth).padStart(2, "0")}_to_${toYear}-${String(
+        toMonth
+      ).padStart(2, "0")}`
+    )}.xlsx`;
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    return res.send(Buffer.from(buf));
+  } catch (e) {
+    next(e);
+  }
+}
+
 module.exports = {
   downloadAdminReport,
   downloadAdminNarratives,
   downloadAdminAnexa13,
+  downloadAdminAnexa13Range,
 };

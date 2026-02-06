@@ -9,6 +9,7 @@ const {
   downloadAdminReport,
   downloadAdminNarratives,
   downloadAdminAnexa13,
+  downloadAdminAnexa13Range,
 } = require("../controllers/adminDownloadController");
 
 const router = express.Router();
@@ -19,6 +20,7 @@ router.put("/:expertId/:year/:month/pm", upsertPmPart);
 router.post("/:expertId/:year/:month/verify", verifyReport);
 router.get("/:year/:month/narratives/download", downloadAdminNarratives);
 router.get("/:year/:month/anexa13/download", downloadAdminAnexa13);
+router.get("/anexa13/range/download", downloadAdminAnexa13Range);
 router.get("/:expertId/:year/:month/download", downloadAdminReport);
 
 module.exports = router;
